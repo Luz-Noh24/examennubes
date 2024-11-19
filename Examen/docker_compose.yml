@@ -1,0 +1,85 @@
+services: 
+  alunm_base:
+    image: mysql:8.0
+    container_name: alunm_base
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: alumnos
+      MYSQL_USER: kk
+      MYSQL_PASSWORD: qq
+    volumes:
+      - alunm_base_data:/var/lib/mysql
+      - ./alumnos.sql:/docker-entrypoint-initdb.d/alumnos.sql
+    networks:
+      - app_network
+
+  master_base:
+    image: mysql:8.0
+    container_name: master_base
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: maestros
+      MYSQL_USER: maestros_user
+      MYSQL_PASSWORD: maestros_password
+    volumes:
+      - master_base_data:/var/lib/mysql
+      - ./maestros.sql:/docker-entrypoint-initdb.d/maestros.sql
+    networks:
+      - app_network
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: phpmyadmin
+    restart: always
+    environment:
+      PMA_ARBITRARY: 1
+    ports:
+      - "8080:80"
+    networks:
+      - app_network
+    depends_on:
+      - alunm_base
+      - master_base
+
+  app_alumnos:
+    build:
+      context: .
+      dockerfile: dockerfile_alumnos.yaml
+    container_name: app_alumnos
+    restart: always
+    environment:
+      DB_HOST: alunm_base
+      DB_NAME: alumnos
+      DB_USER: kk
+      DB_PASSWORD: qq
+    ports:
+      - "8081:80"
+    networks:
+      - app_network
+
+  app_maestros:
+    build:
+      context: .
+      dockerfile: dockerfile_maestros.yaml
+    container_name: app_maestros
+    restart: always
+    environment:
+      DB_HOST: master_base
+      DB_NAME: maestros
+      DB_USER: maestros_user
+      DB_PASSWORD: maestros_password
+      API_ALUMNO: app_alumnos
+    ports:
+      - "8082:80"
+    networks:
+      - app_network
+
+volumes:
+  alunm_base_data:
+  master_base_data:
+
+networks:
+  app_network:
+    driver: bridge
